@@ -1,0 +1,31 @@
+{
+  "name": "eip7702-demo",
+  "version": "1.0.0",
+  "description": "A simple demo of EIP-7702 for upgrading EOAs to smart accounts",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "npm run build && node dist/index.js",
+    "dev": "ts-node index.ts"
+  },
+  "keywords": [
+    "ethereum",
+    "eip7702",
+    "account-abstraction",
+    "smart-accounts"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aa-sdk/core": "^4.14.0",
+    "@account-kit/infra": "^4.14.0",
+    "@account-kit/smart-contracts": "^4.14.0",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.23",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
+  }
+}
