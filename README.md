@@ -1,6 +1,6 @@
-# EIP-7702 Demo
+# Alchemy Account Kit - EIP-7702 Demo
 
-This is a simple demo of EIP-7702, which allows upgrading Externally Owned Accounts (EOAs) to smart contract accounts without changing the address or migrating assets.
+This is a simple demo of EIP-7702 implementation using Alchemy Account Kit, which allows upgrading Externally Owned Accounts (EOAs) to smart contract accounts without changing the address or migrating assets.
 
 ## Prerequisites
 
@@ -40,8 +40,6 @@ By default, this demo uses the standard Hardhat test account which has no ETH. T
 
 You can get free Sepolia ETH from these faucets:
 - [Alchemy Sepolia Faucet](https://sepoliafaucet.com/)
-- [Infura Sepolia Faucet](https://www.infura.io/faucet/sepolia)
-- [QuickNode Sepolia Faucet](https://faucet.quicknode.com/ethereum/sepolia)
 
 ## How to Run
 
@@ -51,9 +49,6 @@ npm install -g typescript ts-node
 
 # Run the demo
 npm run dev
-
-# Or with a specific Alchemy API key
-ALCHEMY_API_KEY=your_api_key npm run dev
 ```
 
 ## Troubleshooting
@@ -61,8 +56,7 @@ ALCHEMY_API_KEY=your_api_key npm run dev
 If you encounter any TypeScript errors or issues:
 
 1. Make sure all dependencies are installed: `npm install`
-2. Try running with the environment variable: `ALCHEMY_API_KEY=your_api_key npm run dev`
-3. You might need Sepolia ETH to execute transactions - get some from [https://sepoliafaucet.com/](https://sepoliafaucet.com/)
+2. You might need Sepolia ETH to execute transactions - get some from [https://sepoliafaucet.com/](https://sepoliafaucet.com/)
 
 ## What This Demo Does
 
@@ -75,7 +69,6 @@ If you encounter any TypeScript errors or issues:
 - This demo uses the Sepolia testnet
 - You'll need some Sepolia ETH to pay for gas when sending transactions
 - You can get Sepolia ETH from: [https://sepoliafaucet.com/](https://sepoliafaucet.com/)
-- The private key in `signer.ts` is a test key - NEVER use it with real funds
 
 ## How EIP-7702 Works
 
@@ -90,5 +83,6 @@ The key benefit is that you maintain your existing address and don't need to mig
 
 ## Learn More
 
+- [Alchemy Account Kit - Using 7702](https://accountkit.alchemy.com/smart-contracts/modular-account-v2/using-7702)
 - [EIP-7702 Specification](https://eips.ethereum.org/EIPS/eip-7702)
 - [Account Kit Documentation](https://accountkit.alchemy.com) 
