@@ -5,14 +5,30 @@ dotenv.config();
 import { createModularAccountV2Client } from "@account-kit/smart-contracts";
 import { sepolia, alchemy } from "@account-kit/infra";
 import { signer } from "./signer";
+import { decodeEventLog } from "viem";
 
 // Turn off TypeScript strictness for this file to avoid API compatibility issues
 // @ts-nocheck
 
 // Configuration constants
 const TIMEOUT_MS = 60000; // 60 seconds timeout for operations
-const TARGET_ADDRESS = process.env.TARGET_ADDRESS || "0x9D3c19e01FBF90a7883396B5BBc5dbF7a1142531";
+const TARGET_ADDRESS = process.env.TARGET_ADDRESS || "0x9Bd9640E5C4cE419dFaba62FcA5096c1c2671bb6";
 const CHAIN = sepolia; // Using Sepolia testnet
+
+// ABI fragment for the CounterUpdated event
+const CounterEventAbi = [{
+  type: 'event',
+  name: 'CounterUpdated',
+  inputs: [
+    {
+      indexed: false,
+      internalType: 'uint256',
+      name: 'newCounterValue',
+      type: 'uint256'
+    }
+  ],
+  anonymous: false
+}] as const;
 
 // Add timeout utility
 const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -58,7 +74,7 @@ async function main() {
       uo: {
         target: TARGET_ADDRESS as `0x${string}`,
         value: 0n,
-        data: "0x" as `0x${string}`,
+        data: "0x5b34b966" as `0x${string}`, // incrementCounter() with proper padding
       },
     };
     console.log("User operation prepared:", JSON.stringify(userOperation, (_, v) => typeof v === 'bigint' ? v.toString() : v));
@@ -101,7 +117,42 @@ async function main() {
       console.log(`Transaction Hash: ${txnHash}`);
       console.log(`View transaction: https://${CHAIN.name}.etherscan.io/tx/${txnHash}`);
       
-      console.log("Successfully upgraded EOA to smart account using EIP-7702!");
+      // Read and decode the event log
+      console.log("\nReading transaction receipt for CounterUpdated event...");
+      try {
+        const receipt = await smartAccountClient.transport.request({
+          method: 'eth_getTransactionReceipt',
+          params: [txnHash]
+        });
+        
+        // @ts-ignore - We know the structure from the RPC spec
+        const logs = receipt?.logs || [];
+        
+        for (const log of logs) {
+          // Only look at logs from our contract
+          if (log.address?.toLowerCase() === TARGET_ADDRESS.toLowerCase()) {
+            try {
+              const decoded = decodeEventLog({
+                abi: CounterEventAbi,
+                data: log.data,
+                topics: log.topics || [],
+              });
+              
+              if (decoded.eventName === 'CounterUpdated') {
+                console.log(`✨ Counter updated! New value: ${decoded.args.newCounterValue.toString()}`);
+                break;
+              }
+            } catch {
+              // Not our event, continue to next log
+              continue;
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error reading event logs:", error);
+      }
+      
+      console.log("\nSuccessfully upgraded EOA to smart account using EIP-7702!");
     } catch (err) {
       const error = err as Error;
       console.error("Error processing user operation:", error);
