@@ -14,6 +14,7 @@ import { decodeEventLog } from "viem";
 const TIMEOUT_MS = 60000; // 60 seconds timeout for operations
 const TARGET_ADDRESS = process.env.TARGET_ADDRESS || "0x9Bd9640E5C4cE419dFaba62FcA5096c1c2671bb6";
 const CHAIN = sepolia; // Using Sepolia testnet
+const GAS_POLICY_ID = process.env.ALCHEMY_GAS_POLICY_ID;
 
 // ABI fragment for the CounterUpdated event
 const CounterEventAbi = [{
@@ -35,6 +36,7 @@ const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * Main function to demonstrate EIP-7702 upgrade of an EOA to a smart account
+ * with optional sponsored transactions
  */
 async function main() {
   try {
@@ -51,6 +53,16 @@ async function main() {
       throw new Error("Missing Alchemy API key in .env file");
     }
     console.log("Using Alchemy API Key from .env file");
+
+    // Check if gas policy ID is provided for sponsored transactions
+    if (!GAS_POLICY_ID) {
+      console.log("\n⚠️ WARNING: No gas policy ID found in .env file");
+      console.log("Transactions will not be sponsored. To enable sponsored transactions:");
+      console.log("1. Go to https://dashboard.alchemy.com/");
+      console.log("2. Navigate to Gas Manager");
+      console.log("3. Create a new gas policy");
+      console.log("4. Copy your policy ID to your .env file as ALCHEMY_GAS_POLICY_ID");
+    }
     
     // Initialize smart account client
     console.log("Creating smart account client with EIP-7702 mode...");
@@ -59,6 +71,8 @@ async function main() {
       transport: alchemy({ apiKey: ALCHEMY_API_KEY }),
       chain: CHAIN,
       signer,
+      // Add gas policy ID if available for sponsored transactions
+      ...(GAS_POLICY_ID ? { policyId: GAS_POLICY_ID } : {}),
     });
     console.log("Smart account client created successfully");
 
@@ -86,6 +100,9 @@ async function main() {
     console.log("1. Generating an EIP-7702 authorization signature");
     console.log("2. Creating a user operation with this authorization");
     console.log("3. Sending it to the Alchemy bundler");
+    if (GAS_POLICY_ID) {
+      console.log("4. Using sponsored transaction (gas fees paid by Alchemy Paymaster)");
+    }
     console.log("This may take some time...");
     
     try {
@@ -117,17 +134,59 @@ async function main() {
       console.log(`Transaction Hash: ${txnHash}`);
       console.log(`View transaction: https://${CHAIN.name}.etherscan.io/tx/${txnHash}`);
       
-      // Read and decode the event log
-      console.log("\nReading transaction receipt for CounterUpdated event...");
-      try {
-        const receipt = await smartAccountClient.transport.request({
-          method: 'eth_getTransactionReceipt',
+      // Verify transaction details
+      console.log("\nVerifying transaction details...");
+      const receipt = await smartAccountClient.transport.request({
+        method: 'eth_getTransactionReceipt',
+        params: [txnHash]
+      });
+      
+      // @ts-ignore - We know the structure from the RPC spec
+      const logs = receipt?.logs || [];
+      
+      // Check if gas policy ID is present
+      if (GAS_POLICY_ID) {
+        console.log("✅ Gas Policy ID is configured:", GAS_POLICY_ID);
+        console.log("Transaction should be sponsored by Alchemy Paymaster");
+        
+        // Log transaction details
+        console.log("\nTransaction Details:");
+        console.log("From:", eoaAddress);
+        console.log("To:", TARGET_ADDRESS);
+        console.log("Value:", "0 ETH");
+        console.log("Status: Success");
+        
+        // Get transaction details from Etherscan
+        const txDetails = await smartAccountClient.transport.request({
+          method: 'eth_getTransactionByHash',
           params: [txnHash]
         });
         
         // @ts-ignore - We know the structure from the RPC spec
-        const logs = receipt?.logs || [];
+        const txFrom = txDetails?.from;
         
+        // Check if transaction was actually sponsored
+        if (txFrom?.toLowerCase() === eoaAddress.toLowerCase()) {
+          console.log("\n⚠️ Note: Transaction appears to be paid from your account");
+          console.log("This might indicate that:");
+          console.log("1. The gas policy ID is not active");
+          console.log("2. The paymaster service is temporarily unavailable");
+          console.log("3. The transaction type is not covered by the policy");
+          console.log("\nPlease check your Alchemy dashboard to verify the gas policy status");
+        } else {
+          console.log("\n✅ Transaction was successfully sponsored");
+          console.log("Gas fees were paid by Alchemy Paymaster");
+          console.log("Transaction sender:", txFrom);
+        }
+      } else {
+        console.log("⚠️ No gas policy ID configured");
+        console.log("Transaction was not sponsored");
+        console.log("Gas fees were paid from your account");
+      }
+      
+      // Read and decode the event log
+      console.log("\nReading transaction receipt for CounterUpdated event...");
+      try {
         for (const log of logs) {
           // Only look at logs from our contract
           if (log.address?.toLowerCase() === TARGET_ADDRESS.toLowerCase()) {
@@ -153,6 +212,9 @@ async function main() {
       }
       
       console.log("\nSuccessfully upgraded EOA to smart account using EIP-7702!");
+      if (GAS_POLICY_ID) {
+        console.log("Transaction was sponsored by Alchemy Paymaster");
+      }
     } catch (err) {
       const error = err as Error;
       console.error("Error processing user operation:", error);
@@ -168,6 +230,13 @@ async function main() {
         console.log("\nYour account doesn't have enough Sepolia ETH to pay for gas.");
         console.log("Please get some test ETH from: https://sepoliafaucet.com/");
         console.log(`Your account address: ${eoaAddress}`);
+      } else if (error.message?.includes("Policy ID(s) not found")) {
+        console.log("\nThe gas policy ID is not associated with your Alchemy account.");
+        console.log("Please follow these steps:");
+        console.log("1. Go to https://dashboard.alchemy.com/");
+        console.log("2. Navigate to Account Kit");
+        console.log("3. Create a new gas policy");
+        console.log("4. Copy your policy ID to your .env file as ALCHEMY_GAS_POLICY_ID");
       } else {
         console.log("\nPlease check the following:");
         console.log("- Your network connection is stable");
