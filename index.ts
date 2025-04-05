@@ -117,22 +117,21 @@ async function main() {
         smartAccountClient.sendUserOperation(userOperation),
         timeoutPromise
       ]);
-      console.log("User operation sent successfully");
       
       // Handling the operation hash result
-      console.log("User Operation Hash (detailed):");
+      console.log("\nUser Operation Details:");
       if (typeof uoHash === 'object') {
         console.log(JSON.stringify(uoHash, null, 2));
       } else {
-        console.log(uoHash);
+        console.log("Hash:", uoHash);
       }
       
       // Wait for transaction confirmation
-      console.log("Waiting for user operation transaction...");
+      console.log("\nWaiting for transaction confirmation...");
       console.log("This may take a minute or two as the operation is being processed by the network...");
       const txnHash = await smartAccountClient.waitForUserOperationTransaction(uoHash);
-      console.log(`Transaction Hash: ${txnHash}`);
-      console.log(`View transaction: https://${CHAIN.name}.etherscan.io/tx/${txnHash}`);
+      console.log(`\nTransaction Hash: ${txnHash}`);
+      console.log(`View on Etherscan: https://${CHAIN.name}.etherscan.io/tx/${txnHash}`);
       
       // Verify transaction details
       console.log("\nVerifying transaction details...");
